@@ -21,6 +21,8 @@ export default function Home() {
   const [chartDimensions, setChartDimensions] = useState({ width: 600, height: 300 });
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [nextCountryTime, setNextCountryTime] = useState<string>('');
+  const [shareMessage, setShareMessage] = useState<string>('');
+  const [copied, setCopied] = useState(false);
   
   // Start a new game on initial load
   useEffect(() => {
@@ -85,6 +87,8 @@ export default function Home() {
       gameOver: false,
       gameWon: false,
     });
+    setCopied(false);
+    setShareMessage('');
   };
   
   const handleGuess = (selectedCountry: Country) => {
@@ -106,6 +110,76 @@ export default function Home() {
       gameOver: isGameOver,
       gameWon: isCorrect,
     });
+    
+    // Generate share message if game is over
+    if (isGameOver) {
+      generateShareMessage(newGuesses, isCorrect, gameState.targetCountry);
+    }
+  };
+  
+  const generateShareMessage = (guesses: Guess[], won: boolean, targetCountry: Country) => {
+    // Get current date
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
+    // Create header
+    let message = `ExportGuessr ${dateStr}\n`;
+    
+    // Add result summary (X/Y or fail) without revealing the country name
+    if (won) {
+      message += `${guesses.length}/${MAX_GUESSES}\n\n`;
+    } else {
+      message += `X/${MAX_GUESSES}\n\n`;
+    }
+    
+    // Create emoji grid for guesses without country names
+    guesses.forEach(guess => {
+      // Calculate distance tiers (closer = more green squares)
+      let distanceEmoji = '🟥'; // far
+      if (guess.distance === 0) {
+        distanceEmoji = '🟩'; // correct
+      } else if (guess.distance < 500) {
+        distanceEmoji = '🟨'; // close
+      } else if (guess.distance < 2000) {
+        distanceEmoji = '🟧'; // medium
+      }
+      
+      // Add direction emoji if not correct guess
+      let directionEmoji = '';
+      if (guess.distance > 0) {
+        switch(guess.direction) {
+          case 'N': directionEmoji = '⬆️'; break;
+          case 'NE': directionEmoji = '↗️'; break;
+          case 'E': directionEmoji = '➡️'; break;
+          case 'SE': directionEmoji = '↘️'; break;
+          case 'S': directionEmoji = '⬇️'; break;
+          case 'SW': directionEmoji = '↙️'; break;
+          case 'W': directionEmoji = '⬅️'; break;
+          case 'NW': directionEmoji = '↖️'; break;
+        }
+      }
+      
+      message += `${distanceEmoji} ${directionEmoji}\n`;
+    });
+    
+    // Add link to the game
+    message += `\nhttps://exportguessr.vercel.app/`;
+    
+    setShareMessage(message);
+  };
+  
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareMessage);
+      setCopied(true);
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy: ', error);
+    }
   };
   
   if (!gameState.targetCountry) {
@@ -167,12 +241,29 @@ export default function Home() {
                     ? `Correct! You guessed it in ${gameState.guesses.length} ${gameState.guesses.length === 1 ? 'try' : 'tries'}.` 
                     : `Game over! The correct answer was ${gameState.targetCountry.name}.`}
                 </p>
-                <button 
-                  className="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md mt-3 md:mt-4"
-                  onClick={() => window.location.reload()}
-                >
-                  Share Results
-                </button>
+                
+                {/* Share results section */}
+                <div className="mt-3 md:mt-4">
+                  <button 
+                    className="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md"
+                    onClick={copyToClipboard}
+                  >
+                    {copied ? 'Copied!' : 'Share Results'}
+                  </button>
+                  
+                  {shareMessage && (
+                    <div className="mt-4 text-left bg-gray-100 p-3 rounded-md text-sm font-mono whitespace-pre-wrap">
+                      {shareMessage}
+                    </div>
+                  )}
+                  
+                  <button 
+                    className="btn bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-md mt-3 ml-2"
+                    onClick={() => window.location.reload()}
+                  >
+                    Play Again
+                  </button>
+                </div>
               </div>
             )}
             
