@@ -16,10 +16,12 @@ interface TooltipData {
   name: string;
   x: number;
   y: number;
+  color: string;
 }
 
 export default function ExportChart({ exportCategories, width, height }: ExportChartProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const [highlightedColumn, setHighlightedColumn] = useState<string | null>(null);
   
   // Sort export categories by value (descending)
   const sortedCategories = [...exportCategories].sort((a, b) => b.value - a.value);
@@ -66,12 +68,14 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
   const handleSvgClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setTooltip(null);
+      setHighlightedColumn(null);
     }
   };
   
   // Hide tooltip when mouse leaves the SVG
   const handleMouseLeave = () => {
     setTooltip(null);
+    setHighlightedColumn(null);
   };
 
   return (
@@ -118,6 +122,8 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
             const barHeight = innerHeight - valueScale(category.percentage);
             const x = categoryScale(category.name) || 0;
             const y = innerHeight - barHeight;
+            const color = colorScale(category.name);
+            const isHighlighted = highlightedColumn === category.name;
             
             return (
               <Group key={category.name}>
@@ -126,29 +132,27 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
                   y={y}
                   width={barWidth}
                   height={barHeight}
-                  fill={colorScale(category.name)}
+                  fill={isHighlighted ? `url(#highlight-${category.name})` : color}
                   rx={4}
                   className="cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const svgRect = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
-                    if (svgRect) {
-                      setTooltip({
-                        name: category.name,
-                        x: x + barWidth / 2 + margin.left,
-                        y: y + margin.top - 10
-                      });
-                    }
+                    setHighlightedColumn(category.name);
+                    setTooltip({
+                      name: category.name,
+                      x: x + barWidth / 2 + margin.left,
+                      y: isSmallScreen ? height * 0.4 : y + margin.top - 10,
+                      color
+                    });
                   }}
                   onMouseEnter={(e) => {
-                    const svgRect = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
-                    if (svgRect) {
-                      setTooltip({
-                        name: category.name,
-                        x: x + barWidth / 2 + margin.left,
-                        y: y + margin.top - 10
-                      });
-                    }
+                    setHighlightedColumn(category.name);
+                    setTooltip({
+                      name: category.name,
+                      x: x + barWidth / 2 + margin.left,
+                      y: isSmallScreen ? height * 0.4 : y + margin.top - 10,
+                      color
+                    });
                   }}
                 />
                 <text
@@ -176,25 +180,37 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
                       : (category.name.length > 15 ? category.name.substring(0, 15) + '...' : category.name)
                   }
                 </text>
+                
+                {/* Gradient for highlighted columns */}
+                <defs>
+                  <linearGradient id={`highlight-${category.name}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0.6} />
+                  </linearGradient>
+                </defs>
               </Group>
             );
           })}
         </Group>
       </svg>
       
-      {/* Tooltip */}
+      {/* Tooltip - fixed position for mobile, absolute for desktop */}
       {tooltip && (
         <div 
-          className="absolute bg-white px-3 py-2 rounded-lg shadow-md text-sm border border-gray-200 z-10 transform -translate-x-1/2"
+          className={`${isSmallScreen ? 'fixed inset-x-0 mx-auto' : 'absolute'} bg-white px-3 py-2 rounded-lg shadow-md text-sm border border-gray-200 z-10 transform ${isSmallScreen ? '' : '-translate-x-1/2'}`}
           style={{ 
-            left: tooltip.x, 
-            top: tooltip.y, 
-            maxWidth: '200px',
-            pointerEvents: 'none'
+            left: isSmallScreen ? '50%' : tooltip.x, 
+            top: tooltip.y,
+            maxWidth: isSmallScreen ? '90%' : '200px',
+            width: isSmallScreen ? '90%' : 'auto',
+            pointerEvents: 'none',
+            borderLeft: isSmallScreen ? `4px solid ${tooltip.color}` : 'none'
           }}
         >
           <div className="font-medium text-center">{tooltip.name}</div>
-          <div className="tooltip-arrow absolute bottom-0 left-1/2 w-2 h-2 bg-white transform translate-y-1/2 rotate-45 -translate-x-1/2 border-r border-b border-gray-200"></div>
+          {!isSmallScreen && (
+            <div className="tooltip-arrow absolute bottom-0 left-1/2 w-2 h-2 bg-white transform translate-y-1/2 rotate-45 -translate-x-1/2 border-r border-b border-gray-200"></div>
+          )}
         </div>
       )}
     </div>
