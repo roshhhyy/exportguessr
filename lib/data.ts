@@ -42,47 +42,39 @@ const RESET_HOUR_ET = 20; // 8pm ET
 // Helper to check if we're running in a browser
 const isBrowser = typeof window !== 'undefined';
 
+// Global game cycle constants
+const CYCLE_LENGTH = countries.length; // Length of a full cycle using all countries
+const START_DATE = new Date('2024-03-28'); // Start date of the first cycle
+
 // Get the current target country based on the day
 export function getTargetCountry(): Country {
-  // If we're not in a browser (e.g., during SSR), return a random country
-  if (!isBrowser) {
-    const randomIndex = Math.floor(Math.random() * countries.length);
-    return countries[randomIndex];
-  }
-  
-  // Check if we need to reset the used countries list
-  checkAndResetUsedCountries();
-  
   // Get the current date in ET
   const currentDate = getCurrentDateET();
   
-  // Create a date string in YYYY-MM-DD format to use as our seed
-  const dateString = currentDate.toISOString().split('T')[0];
+  // Create a date string in YYYY-MM-DD format
+  const dateString = formatDateForKey(currentDate);
+  
+  // Use the date string as our seed for country selection
+  const index = getCountryIndexFromDate(dateString);
+  
+  // Return the selected country
+  return countries[index];
+}
 
-  // Get the list of used countries from localStorage
-  const usedCountries = getUsedCountries();
-  
-  // Filter out the used countries
-  const availableCountries = countries.filter(country => !usedCountries.includes(country.code));
-  
-  // If all countries have been used (this shouldn't happen due to the reset logic)
-  if (availableCountries.length === 0) {
-    // Reset the used countries and try again
-    if (isBrowser) {
-      localStorage.removeItem('exportGuessr-usedCountries');
-    }
-    return getTargetCountry();
-  }
-  
-  // Use the date string to create a deterministic selection
+// Format a date as YYYY-MM-DD
+function formatDateForKey(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+// Get a deterministic country index from a date string
+function getCountryIndexFromDate(dateString: string): number {
+  // Create a seed from the date
   const dateHash = hashCode(dateString);
-  const index = Math.abs(dateHash) % availableCountries.length;
-  const selectedCountry = availableCountries[index];
   
-  // Add this country to the used list
-  saveUsedCountry(selectedCountry.code);
+  // Map the hash to a country index (0 to countries.length - 1)
+  const index = Math.abs(dateHash) % countries.length;
   
-  return selectedCountry;
+  return index;
 }
 
 // Simple string hash function
@@ -102,60 +94,25 @@ function hashCode(str: string): number {
 // Get current date in ET
 export function getCurrentDateET(): Date {
   const now = new Date();
-  // Convert to ET (UTC-4 or UTC-5 depending on daylight saving time)
-  // Use browser's built-in time zone conversion
+  
+  // If it's after reset time, return today
+  // Otherwise, if it's before reset time, use today
   if (isBrowser) {
     const etOptions = { timeZone: 'America/New_York' };
     const etDateStr = now.toLocaleString('en-US', etOptions);
-    return new Date(etDateStr);
+    const etDate = new Date(etDateStr);
+    
+    // Check if we need to use yesterday's date (before reset time)
+    if (etDate.getHours() < RESET_HOUR_ET) {
+      const yesterday = new Date(etDate);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday;
+    }
+    
+    return etDate;
   }
+  
   return now; // Default to current time if not in browser
-}
-
-// Check if we need to reset based on current time
-function checkAndResetUsedCountries(): void {
-  if (!isBrowser) return;
-  
-  const lastResetDate = localStorage.getItem('exportGuessr-lastReset');
-  
-  if (!lastResetDate) {
-    // First time running - no need to reset
-    localStorage.setItem('exportGuessr-lastReset', getCurrentDateET().toISOString());
-    return;
-  }
-  
-  const lastReset = new Date(lastResetDate);
-  const currentDate = getCurrentDateET();
-  
-  // Calculate if we've used all countries
-  const usedCountries = getUsedCountries();
-  const allCountriesUsed = usedCountries.length >= countries.length;
-  
-  // Reset if all countries have been used
-  if (allCountriesUsed) {
-    localStorage.removeItem('exportGuessr-usedCountries');
-    localStorage.setItem('exportGuessr-lastReset', currentDate.toISOString());
-    return;
-  }
-}
-
-// Get the list of used countries from localStorage
-function getUsedCountries(): string[] {
-  if (!isBrowser) return [];
-  
-  const usedCountriesStr = localStorage.getItem('exportGuessr-usedCountries');
-  return usedCountriesStr ? JSON.parse(usedCountriesStr) : [];
-}
-
-// Save a country as used
-function saveUsedCountry(countryCode: string): void {
-  if (!isBrowser) return;
-  
-  const usedCountries = getUsedCountries();
-  if (!usedCountries.includes(countryCode)) {
-    usedCountries.push(countryCode);
-    localStorage.setItem('exportGuessr-usedCountries', JSON.stringify(usedCountries));
-  }
 }
 
 // Calculate time until next reset (8pm ET)
@@ -163,6 +120,7 @@ export function getTimeUntilNextReset(): { hours: number, minutes: number, secon
   const now = getCurrentDateET();
   const resetTime = new Date(now);
   
+  // Set to today's reset time (8pm ET)
   resetTime.setHours(RESET_HOUR_ET, 0, 0, 0);
   
   // If it's already past reset time, set for next day
