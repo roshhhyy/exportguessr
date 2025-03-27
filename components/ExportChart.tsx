@@ -14,8 +14,6 @@ interface ExportChartProps {
 
 interface TooltipData {
   name: string;
-  x: number;
-  y: number;
   color: string;
 }
 
@@ -80,6 +78,19 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
 
   return (
     <div className="relative w-full overflow-hidden">
+      {/* Fixed position tooltip above the chart */}
+      {tooltip && (
+        <div 
+          className="mx-auto bg-white px-3 py-2 mb-3 rounded-lg shadow-md text-sm border border-gray-200 text-center"
+          style={{ 
+            maxWidth: '90%',
+            borderLeft: `4px solid ${tooltip.color}`
+          }}
+        >
+          <div className="font-medium">{tooltip.name}</div>
+        </div>
+      )}
+      
       <svg 
         width="100%" 
         height={height}
@@ -140,8 +151,6 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
                     setHighlightedColumn(category.name);
                     setTooltip({
                       name: category.name,
-                      x: x + barWidth / 2 + margin.left,
-                      y: isSmallScreen ? height * 0.4 : y + margin.top - 10,
                       color
                     });
                   }}
@@ -149,8 +158,6 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
                     setHighlightedColumn(category.name);
                     setTooltip({
                       name: category.name,
-                      x: x + barWidth / 2 + margin.left,
-                      y: isSmallScreen ? height * 0.4 : y + margin.top - 10,
                       color
                     });
                   }}
@@ -193,26 +200,6 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
           })}
         </Group>
       </svg>
-      
-      {/* Tooltip - fixed position for mobile, absolute for desktop */}
-      {tooltip && (
-        <div 
-          className={`${isSmallScreen ? 'fixed inset-x-0 mx-auto' : 'absolute'} bg-white px-3 py-2 rounded-lg shadow-md text-sm border border-gray-200 z-10 transform ${isSmallScreen ? '' : '-translate-x-1/2'}`}
-          style={{ 
-            left: isSmallScreen ? '50%' : tooltip.x, 
-            top: tooltip.y,
-            maxWidth: isSmallScreen ? '90%' : '200px',
-            width: isSmallScreen ? '90%' : 'auto',
-            pointerEvents: 'none',
-            borderLeft: isSmallScreen ? `4px solid ${tooltip.color}` : 'none'
-          }}
-        >
-          <div className="font-medium text-center">{tooltip.name}</div>
-          {!isSmallScreen && (
-            <div className="tooltip-arrow absolute bottom-0 left-1/2 w-2 h-2 bg-white transform translate-y-1/2 rotate-45 -translate-x-1/2 border-r border-b border-gray-200"></div>
-          )}
-        </div>
-      )}
     </div>
   );
 } 
