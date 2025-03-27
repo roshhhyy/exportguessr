@@ -72,8 +72,8 @@ export default function Home() {
   const updateChartDimensions = () => {
     if (chartContainerRef.current) {
       const width = chartContainerRef.current.offsetWidth;
-      // Maintain aspect ratio
-      const height = Math.min(width * 0.5, 300);
+      // Maintain aspect ratio but ensure minimum height
+      const height = Math.max(Math.min(width * 0.5, 300), 150);
       setChartDimensions({ width, height });
     }
   };
@@ -214,7 +214,7 @@ export default function Home() {
             {/* Export Categories Chart */}
             <div className="my-4 md:my-8">
               <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Random Exports</h3>
-              <div className="h-60 md:h-80" ref={chartContainerRef}>
+              <div className="h-60 md:h-80 w-full px-1 md:px-0 overflow-hidden" ref={chartContainerRef}>
                 <ExportChart 
                   exportCategories={gameState.targetCountry.exportCategories}
                   width={chartDimensions.width}

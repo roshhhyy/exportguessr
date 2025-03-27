@@ -26,23 +26,26 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
   
   // Determine if we're on a small screen
   const isSmallScreen = width < 500;
+  const isTinyScreen = width < 360;
   
   // Dimensions - adjust margins for smaller screens
   const margin = useMemo(() => ({
     top: 20,
-    right: isSmallScreen ? 10 : 20,
+    right: isTinyScreen ? 5 : (isSmallScreen ? 10 : 20),
     bottom: 60,
-    left: isSmallScreen ? 40 : 80
-  }), [isSmallScreen]);
+    left: isTinyScreen ? 25 : (isSmallScreen ? 40 : 80)
+  }), [isSmallScreen, isTinyScreen]);
   
-  const innerWidth = width - margin.left - margin.right;
+  // Ensure innerWidth is positive to prevent negative SVG dimensions
+  const safeWidth = Math.max(width, margin.left + margin.right + 100);
+  const innerWidth = safeWidth - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
   // Scales
   const categoryScale = scaleBand<string>({
     domain: sortedCategories.map(c => c.name),
     range: [0, innerWidth],
-    padding: isSmallScreen ? 0.15 : 0.2,
+    padding: isTinyScreen ? 0.1 : (isSmallScreen ? 0.15 : 0.2),
   });
 
   const valueScale = scaleLinear<number>({
@@ -57,7 +60,7 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
   });
 
   // Number of ticks based on screen size
-  const numYTicks = isSmallScreen ? 5 : 10;
+  const numYTicks = isTinyScreen ? 3 : (isSmallScreen ? 5 : 10);
   
   // Handle click/touch anywhere to close tooltip
   const handleSvgClick = (e: React.MouseEvent) => {
@@ -72,10 +75,12 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full overflow-hidden">
       <svg 
-        width={width} 
-        height={height} 
+        width="100%" 
+        height={height}
+        viewBox={`0 0 ${safeWidth} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
         onClick={handleSvgClick}
         onMouseLeave={handleMouseLeave}
       >
@@ -84,11 +89,11 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
           <AxisLeft 
             scale={valueScale} 
             label="% of Total Exports"
-            labelOffset={isSmallScreen ? 25 : 50}
+            labelOffset={isTinyScreen ? 15 : (isSmallScreen ? 25 : 50)}
             tickFormat={(value) => `${value}%`}
             numTicks={numYTicks}
             tickLabelProps={() => ({
-              fontSize: isSmallScreen ? 8 : 10,
+              fontSize: isTinyScreen ? 7 : (isSmallScreen ? 8 : 10),
               textAnchor: 'end',
               dy: '0.33em',
             })}
@@ -98,7 +103,7 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
           <AxisBottom 
             top={innerHeight} 
             scale={categoryScale} 
-            label="Export Categories"
+            label={isTinyScreen ? "" : "Export Categories"}
             labelOffset={50}
             tickLabelProps={() => ({
               fontSize: 0, // Hide the default tick labels
@@ -150,7 +155,7 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
                   x={x + barWidth / 2}
                   y={y - 5}
                   textAnchor="middle"
-                  fontSize={isSmallScreen ? 9 : 12}
+                  fontSize={isTinyScreen ? 7 : (isSmallScreen ? 9 : 12)}
                   fill="#666"
                 >
                   {category.percentage.toFixed(1)}%
@@ -160,13 +165,15 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
                   x={x + barWidth / 2}
                   y={innerHeight + 20}
                   textAnchor="middle"
-                  fontSize={isSmallScreen ? 8 : 10}
+                  fontSize={isTinyScreen ? 6 : (isSmallScreen ? 8 : 10)}
                   fill="#666"
                   width={barWidth}
                 >
-                  {isSmallScreen 
-                    ? (category.name.length > 10 ? category.name.substring(0, 10) + '...' : category.name)
-                    : (category.name.length > 15 ? category.name.substring(0, 15) + '...' : category.name)
+                  {isTinyScreen
+                    ? (category.name.length > 6 ? category.name.substring(0, 6) + '...' : category.name)
+                    : isSmallScreen 
+                      ? (category.name.length > 8 ? category.name.substring(0, 8) + '...' : category.name)
+                      : (category.name.length > 15 ? category.name.substring(0, 15) + '...' : category.name)
                   }
                 </text>
               </Group>
