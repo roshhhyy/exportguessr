@@ -37,6 +37,40 @@ export function getRandomCountry(): Country {
   return allCountries[randomIndex];
 }
 
+// Get daily country that changes at 8pm ET for all players globally
+export function getDailyCountry(): Country {
+  // Calculate the current time in ET (Eastern Time)
+  const now = new Date();
+  
+  // Convert to ET (UTC-4 or UTC-5 depending on daylight savings)
+  // For simplicity, we'll use a fixed offset of UTC-4 (can be refined later)
+  const etOffset = -4 * 60 * 60 * 1000; // 4 hours in milliseconds
+  const localOffset = now.getTimezoneOffset() * 60 * 1000;
+  const etTime = new Date(now.getTime() + etOffset + localOffset);
+  
+  // If it's before 8pm ET, use yesterday's date
+  const etHours = etTime.getHours();
+  const useYesterday = etHours < 20;
+  const targetDate = new Date(etTime);
+  if (useYesterday) {
+    targetDate.setDate(targetDate.getDate() - 1);
+  }
+  
+  // Create a string in format YYYY-MM-DD to use as seed
+  const dateString = targetDate.toISOString().split('T')[0];
+  
+  // Use the date string to create a deterministic index
+  let hash = 0;
+  for (let i = 0; i < dateString.length; i++) {
+    hash = ((hash << 5) - hash) + dateString.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  
+  // Use absolute value of hash to get a valid index
+  const index = Math.abs(hash) % allCountries.length;
+  return allCountries[index];
+}
+
 export function formatExportValue(value: number): string {
   if (value >= 1000000000000) {
     return `$${(value / 1000000000000).toFixed(2)}T`;

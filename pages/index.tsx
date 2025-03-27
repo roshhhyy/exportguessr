@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import { countries, getRandomCountry, formatExportValue } from '@/lib/data';
+import { countries, getRandomCountry, getDailyCountry, formatExportValue } from '@/lib/data';
 import { createGuess } from '@/lib/game-utils';
 import { GameState, Guess, Country } from '@/lib/types';
 import ExportChart from '@/components/ExportChart';
@@ -20,6 +20,7 @@ export default function Home() {
   
   const [chartDimensions, setChartDimensions] = useState({ width: 600, height: 300 });
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [nextCountryTime, setNextCountryTime] = useState<string>('');
   
   // Start a new game on initial load
   useEffect(() => {
@@ -30,8 +31,41 @@ export default function Home() {
     
     // Add resize listener for responsive chart
     window.addEventListener('resize', updateChartDimensions);
-    return () => window.removeEventListener('resize', updateChartDimensions);
+    
+    // Update the countdown timer
+    updateNextCountryTime();
+    const timer = setInterval(updateNextCountryTime, 60000); // Update every minute
+    
+    return () => {
+      window.removeEventListener('resize', updateChartDimensions);
+      clearInterval(timer);
+    };
   }, []);
+  
+  const updateNextCountryTime = () => {
+    const now = new Date();
+    
+    // Convert to ET (Eastern Time)
+    const etOffset = -4 * 60 * 60 * 1000; // 4 hours in milliseconds
+    const localOffset = now.getTimezoneOffset() * 60 * 1000;
+    const etTime = new Date(now.getTime() + etOffset + localOffset);
+    
+    // Create next reset time (8pm ET today)
+    const resetTime = new Date(etTime);
+    resetTime.setHours(20, 0, 0, 0);
+    
+    // If it's past 8pm, set to 8pm tomorrow
+    if (etTime > resetTime) {
+      resetTime.setDate(resetTime.getDate() + 1);
+    }
+    
+    // Calculate time difference
+    const diffMs = resetTime.getTime() - etTime.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    setNextCountryTime(`${diffHrs}h ${diffMins}m`);
+  };
   
   const updateChartDimensions = () => {
     if (chartContainerRef.current) {
@@ -43,7 +77,7 @@ export default function Home() {
   };
   
   const startNewGame = () => {
-    const targetCountry = getRandomCountry();
+    const targetCountry = getDailyCountry();
     setGameState({
       targetCountry,
       guesses: [],
@@ -88,7 +122,12 @@ export default function Home() {
       </Head>
       
       <main className="container mx-auto px-3 md:px-4 max-w-3xl">
-        <h1 className="text-3xl md:text-4xl font-bold text-center mb-4 md:mb-8">ExportGuessr</h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-2 md:mb-4">ExportGuessr</h1>
+        
+        {/* Next country timer */}
+        <div className="text-center text-gray-600 text-sm md:text-base mb-4 md:mb-6">
+          Next country in: <span className="font-semibold">{nextCountryTime}</span>
+        </div>
         
         {/* Game Content */}
         <div className="card mb-6 md:mb-8">
@@ -130,9 +169,9 @@ export default function Home() {
                 </p>
                 <button 
                   className="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md mt-3 md:mt-4"
-                  onClick={startNewGame}
+                  onClick={() => window.location.reload()}
                 >
-                  Play Again
+                  Share Results
                 </button>
               </div>
             )}
