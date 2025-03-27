@@ -21,18 +21,8 @@ export default function CountrySelector({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  // Sort countries alphabetically by name with null checks
-  const sortedCountries = React.useMemo(() => {
-    // Filter out undefined or invalid countries first
-    const validCountries = (countries || []).filter(country => 
-      country && typeof country === 'object' && country.name
-    );
-    
-    // Then sort the valid countries
-    return [...validCountries].sort((a, b) => 
-      (a.name || '').localeCompare(b.name || '')
-    );
-  }, [countries]);
+  // Sort countries alphabetically by name
+  const sortedCountries = [...countries].sort((a, b) => a.name.localeCompare(b.name));
   
   // Filter countries based on search term
   useEffect(() => {

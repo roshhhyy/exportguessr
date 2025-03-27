@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import { countries, getTargetCountry, formatExportValue, getTimeUntilNextReset, getCurrentDateET } from '@/lib/data';
+import { countries, getRandomCountry, formatExportValue } from '@/lib/data';
 import { createGuess } from '@/lib/game-utils';
 import { GameState, Guess, Country } from '@/lib/types';
 import ExportChart from '@/components/ExportChart';
@@ -21,33 +21,17 @@ export default function Home() {
   const [chartDimensions, setChartDimensions] = useState({ width: 600, height: 300 });
   const chartContainerRef = useRef<HTMLDivElement>(null);
   
-  // Time until next reset
-  const [timeUntilReset, setTimeUntilReset] = useState({ hours: 0, minutes: 0, seconds: 0 });
-  
-  // Set up the timer and start the game on initial load
+  // Start a new game on initial load
   useEffect(() => {
     startNewGame();
     
     // Set initial chart dimensions
     updateChartDimensions();
     
-    // Set up timers
-    updateTimeUntilReset();
-    const timerInterval = setInterval(updateTimeUntilReset, 1000);
-    
     // Add resize listener for responsive chart
     window.addEventListener('resize', updateChartDimensions);
-    
-    return () => {
-      window.removeEventListener('resize', updateChartDimensions);
-      clearInterval(timerInterval);
-    };
+    return () => window.removeEventListener('resize', updateChartDimensions);
   }, []);
-  
-  // Update time until reset
-  const updateTimeUntilReset = () => {
-    setTimeUntilReset(getTimeUntilNextReset());
-  };
   
   const updateChartDimensions = () => {
     if (chartContainerRef.current) {
@@ -59,7 +43,7 @@ export default function Home() {
   };
   
   const startNewGame = () => {
-    const targetCountry = getTargetCountry();
+    const targetCountry = getRandomCountry();
     setGameState({
       targetCountry,
       guesses: [],
@@ -88,11 +72,6 @@ export default function Home() {
       gameOver: isGameOver,
       gameWon: isCorrect,
     });
-  };
-  
-  // Format time with leading zeros
-  const formatTimeUnit = (unit: number): string => {
-    return unit.toString().padStart(2, '0');
   };
   
   if (!gameState.targetCountry) {
@@ -149,9 +128,12 @@ export default function Home() {
                     ? `Correct! You guessed it in ${gameState.guesses.length} ${gameState.guesses.length === 1 ? 'try' : 'tries'}.` 
                     : `Game over! The correct answer was ${gameState.targetCountry.name}.`}
                 </p>
-                <p className="text-sm md:text-base mt-2 mb-4">
-                  A new country will be available in {formatTimeUnit(timeUntilReset.hours)}:{formatTimeUnit(timeUntilReset.minutes)}:{formatTimeUnit(timeUntilReset.seconds)}
-                </p>
+                <button 
+                  className="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md mt-3 md:mt-4"
+                  onClick={startNewGame}
+                >
+                  Play Again
+                </button>
               </div>
             )}
             
@@ -173,10 +155,7 @@ export default function Home() {
       </main>
       
       <footer className="text-center text-gray-500 mt-8 md:mt-12 mb-4 md:mb-6 text-sm">
-        <p className="mb-2">ExportGuessr - A geography guessing game about countries' exports</p>
-        <p className="text-xs md:text-sm">
-          Next country in: <span className="font-mono">{formatTimeUnit(timeUntilReset.hours)}:{formatTimeUnit(timeUntilReset.minutes)}:{formatTimeUnit(timeUntilReset.seconds)}</span>
-        </p>
+        <p>ExportGuessr - A geography guessing game about countries' exports</p>
       </footer>
     </div>
   );
