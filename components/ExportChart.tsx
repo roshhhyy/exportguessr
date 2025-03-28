@@ -78,18 +78,25 @@ export default function ExportChart({ exportCategories, width, height }: ExportC
 
   return (
     <div className="relative w-full overflow-hidden">
-      {/* Fixed position tooltip above the chart */}
-      {tooltip && (
-        <div 
-          className="mx-auto bg-white px-3 py-2 mb-3 rounded-lg shadow-md text-sm border border-gray-200 text-center"
-          style={{ 
+      <div className="tooltip-container" style={{ height: '40px', position: 'relative' }}>
+        {tooltip && (
+          <div className="tooltip" style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'white',
+            padding: '8px 12px',
+            borderRadius: '4px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            zIndex: 10,
+            borderLeft: `4px solid ${tooltip.color}`,
             maxWidth: '90%',
-            borderLeft: `4px solid ${tooltip.color}`
-          }}
-        >
-          <div className="font-medium">{tooltip.name}</div>
-        </div>
-      )}
+            textAlign: 'center'
+          }}>
+            {tooltip.name}
+          </div>
+        )}
+      </div>
       
       <svg 
         width="100%" 
